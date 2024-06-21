@@ -10,18 +10,12 @@ from notes.models import Note
 User = get_user_model()
 
 
-class TestLogic(TestCase):
+class TestNoteCreate(TestCase):
 
     @classmethod
     def setUpTestData(cls) -> None:
         cls.author = User.objects.create(username='Автор')
         cls.not_author = User.objects.create(username='Не автор')
-        cls.note = Note.objects.create(
-            title='Заголовок',
-            text='Текст',
-            slug='Slug',
-            author=cls.author
-        )
         cls.form_data = {
             'title': 'Заголовок',
             'text': 'Текст',
@@ -88,6 +82,20 @@ class TestLogic(TestCase):
         new_note = Note.objects.get()
         expected_slug = slugify(self.form_data['title'])
         self.assertEqual(new_note.slug, expected_slug)
+
+
+class TestNoteUpdateDelete(TestCase):
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.author = User.objects.create(username='Автор')
+        cls.not_author = User.objects.create(username='Не автор')
+        cls.note = Note.objects.create(
+            title='Заголовок',
+            text='Текст',
+            slug='Slug',
+            author=cls.author
+        )
 
     def test_author_can_edit_note(self):
         """
