@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -88,9 +89,56 @@ class TestLogic(TestCase):
         expected_slug = slugify(self.form_data['title'])
         self.assertEqual(new_note.slug, expected_slug)
 
-    def test_stab(self):
+    def test_author_can_edit_note(self):
         """
         Пользователь может редактировать и удалять свои заметки, но не может
         редактировать или удалять чужие.
+
         """
-        ...
+        self.client.force_login(self.author)
+        url = reverse('notes:edit', args=(self.note.slug,))
+        response = self.client.post(url, self.form_data)
+        self.assertRedirects(response, reverse('notes:success'))
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.title, self.form_data['title'])
+        self.assertEqual(self.note.text, self.form_data['text'])
+        self.assertEqual(self.note.slug, self.form_data['slug'])
+
+    def test_other_user_cant_edit_note(self):
+        """
+        Пользователь может редактировать и удалять свои заметки, но не может
+        редактировать или удалять чужие.
+
+        """
+        self.client.force_login(self.not_author)
+        url = reverse('notes:edit', args=(self.note.slug,))
+        response = self.client.post(url, self.form_data)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        note_from_db = Note.objects.get(id=self.note.id)
+        self.assertEqual(self.note.title, note_from_db.title)
+        self.assertEqual(self.note.text, note_from_db.text)
+        self.assertEqual(self.note.slug, note_from_db.slug)
+
+    def test_author_can_delete_note(self):
+        """
+        Пользователь может редактировать и удалять свои заметки, но не может
+        редактировать или удалять чужие.
+
+        """
+        self.client.force_login(self.author)
+        url = reverse('notes:delete', args=(self.note.slug,))
+        response = self.client.post(url)
+        self.assertRedirects(response, reverse('notes:success'))
+        self.assertEqual(Note.objects.count(), 0)
+
+    def test_other_user_cant_delete_note(self):
+        """
+        Пользователь может редактировать и удалять свои заметки, но не может
+        редактировать или удалять чужие.
+
+        """
+        self.client.force_login(self.not_author)
+        url = reverse('notes:delete', args=(self.note.slug,))
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertEqual(Note.objects.count(), 1)
