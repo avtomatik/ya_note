@@ -1,32 +1,27 @@
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.urls import reverse
-
-from notes.models import Note
-
-User = get_user_model()
+from .common import TestCaseBase
 
 
-class TestRoutes(TestCase):
+class TestRoutes(TestCaseBase):
 
-    @classmethod
-    def setUpTestData(cls) -> None:
-        cls.author = User.objects.create(username='Автор')
-        cls.not_author = User.objects.create(username='Не автор')
-        cls.note = Note.objects.create(
-            title='Заголовок',
-            text='Текст',
-            slug='Slug',
-            author=cls.author
-        )
+    def test_pages_availability_for_anonymous_user(self):
+        """
+        Главная страница доступна анонимному пользователю.
 
-    def test_home_availability_for_anonymous_user(self):
-        """Главная страница доступна анонимному пользователю."""
-        url = reverse('notes:home')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTPStatus.OK)
+        Страницы регистрации пользователей, входа в учётную запись и выхода из
+        неё доступны всем пользователям.
+
+        """
+        for url in (
+            self.NOTES_HOME_URL,
+            self.USERS_LOGIN_URL,
+            self.USERS_LOGOUT_URL,
+            self.USERS_SIGNUP_URL,
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_pages_availability_for_auth_user(self):
         """
@@ -36,9 +31,12 @@ class TestRoutes(TestCase):
 
         """
         self.client.force_login(self.not_author)
-        for name in ('notes:list', 'notes:success', 'notes:add'):
-            with self.subTest(name=name):
-                url = reverse(name)
+        for url in (
+            self.NOTES_ADD_URL,
+            self.NOTES_LIST_URL,
+            self.NOTES_SUCCESS_URL,
+        ):
+            with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
@@ -50,14 +48,17 @@ class TestRoutes(TestCase):
 
         """
         users_statuses = (
-            (self.author, HTTPStatus.OK),
             (self.not_author, HTTPStatus.NOT_FOUND),
+            (self.author, HTTPStatus.OK),
         )
         for user, status_code in users_statuses:
             self.client.force_login(user)
-            for name in ('notes:detail', 'notes:edit', 'notes:delete'):
-                with self.subTest(name=name):
-                    url = reverse(name, args=(self.note.slug,))
+            for url in (
+                self.NOTES_DETAIL_URL,
+                self.NOTES_UPDATE_URL,
+                self.NOTES_DELETE_URL,
+            ):
+                with self.subTest(url=url):
                     response = self.client.get(url)
                     self.assertEqual(response.status_code, status_code)
 
@@ -69,31 +70,15 @@ class TestRoutes(TestCase):
         перенаправляется на страницу логина.
 
         """
-        names_args = (
-            ('notes:list', None),
-            ('notes:success', None),
-            ('notes:add', None),
-            ('notes:detail', (self.note.slug,)),
-            ('notes:edit', (self.note.slug,)),
-            ('notes:delete', (self.note.slug,))
-        )
-        login_url = reverse('users:login')
-        for name, args in names_args:
-            with self.subTest(name=name, args=args):
-                url = reverse(name, args=args)
-                redirect_url = f'{login_url}?next={url}'
+        for url in (
+            self.NOTES_ADD_URL,
+            self.NOTES_DELETE_URL,
+            self.NOTES_DETAIL_URL,
+            self.NOTES_LIST_URL,
+            self.NOTES_SUCCESS_URL,
+            self.NOTES_UPDATE_URL,
+        ):
+            with self.subTest(url=url):
+                redirect_url = f'{self.USERS_LOGIN_URL}?next={url}'
                 response = self.client.get(url)
                 self.assertRedirects(response, redirect_url)
-
-    def test_pages_availability(self):
-        """
-        Страницы регистрации пользователей, входа в учётную запись и выхода из
-        неё доступны всем пользователям.
-
-        """
-        names = ('users:signup', 'users:login', 'users:logout')
-        for name in names:
-            with self.subTest(name=name):
-                url = reverse(name)
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, HTTPStatus.OK)
