@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 from notes.models import Note
 
@@ -25,7 +25,13 @@ class TestCaseBase(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.author = User.objects.create(username='Автор')
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
+
         cls.not_author = User.objects.create(username='Не автор')
+        cls.not_author_client = Client()
+        cls.not_author_client.force_login(cls.not_author)
+
         cls.note = Note.objects.create(
             title='Заголовок',
             text='Текст',
